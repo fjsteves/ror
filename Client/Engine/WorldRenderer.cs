@@ -480,7 +480,6 @@ public sealed class WorldRenderer : IDisposable
             if (!_debugLogged)
             {
                 Console.WriteLine($"[WorldRenderer] Texmap lookup failed for TextureId={textureChoice.TextureId}");
-                _debugLogged = true;
             }
         }
         
