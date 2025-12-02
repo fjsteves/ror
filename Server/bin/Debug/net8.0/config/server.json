@@ -1,0 +1,28 @@
+{
+  "ServerId": 1,
+  "ServerName": "Realm of Reality",
+  "Network": {
+    "BindAddress": "0.0.0.0",
+    "Port": 7775,
+    "MaxConnections": 1000,
+    "ConnectionTimeoutSeconds": 30,
+    "PingIntervalSeconds": 10
+  },
+  "GameRules": {
+    "MaxCharactersPerAccount": 5,
+    "StartingMapId": 1,
+    "StartingX": 1495,
+    "StartingY": 1629,
+    "StartingStatTotal": 80,
+    "LocalChatRange": 15,
+    "VisibilityRange": 18,
+    "PvPEnabled": true
+  },
+  "Paths": {
+    "DataDirectory": "data",
+    "WorldDirectory": "data/world",
+    "AccountsFile": "data/accounts.json",
+    "CharactersDirectory": "data/characters",
+    "LogDirectory": "logs"
+  }
+}

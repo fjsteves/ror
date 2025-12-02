@@ -1,0 +1,11 @@
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\bin\Debug\net8.0\RealmOfReality.Shared.deps.json
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\bin\Debug\net8.0\RealmOfReality.Shared.dll
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\bin\Debug\net8.0\RealmOfReality.Shared.pdb
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\RealmOfReality.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\RealmOfReality.Shared.AssemblyInfoInputs.cache
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\RealmOfReality.Shared.AssemblyInfo.cs
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\RealmOfReality.Shared.csproj.CoreCompileInputs.cache
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\RealmOfReality.Shared.dll
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\refint\RealmOfReality.Shared.dll
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\RealmOfReality.Shared.pdb
+C:\test\RealmOfReality_Full\RealmOfReality\Shared\obj\Debug\net8.0\ref\RealmOfReality.Shared.dll
