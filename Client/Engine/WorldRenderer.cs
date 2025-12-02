@@ -518,74 +518,44 @@ public sealed class WorldRenderer : IDisposable
     
     /// <summary>
     /// Pick the best TextureId from a quad's 4 corners.
-    /// ClassicUO algorithm: Uses priority based on texture presence and Z-height.
-    /// 
-    /// Priority order when corners have different textures:
-    /// 1. If 3+ corners have same texture, use that
-    /// 2. Otherwise, use texture from corner with highest Z
-    /// 3. If all have same Z, prefer NW corner
+    /// ClassicUO algorithm: chooses the texmap from the highest-Z corner that
+    /// actually defines a texmap in TileData. Ties fall back to NW → NE → SW → SE
+    /// ordering so transitions remain stable between adjacent cells.
     /// </summary>
     private ushort PickTextureId(TerrainQuad quad)
     {
         if (_uoAssets?.TileData?.IsLoaded != true)
             return 0;
         
-        // Get TextureId for each corner
-        var nwData = _uoAssets.TileData.GetLandTile(quad.NW.TileId);
-        var neData = _uoAssets.TileData.GetLandTile(quad.NE.TileId);
-        var swData = _uoAssets.TileData.GetLandTile(quad.SW.TileId);
-        var seData = _uoAssets.TileData.GetLandTile(quad.SE.TileId);
-        
-        ushort texNW = nwData.TextureId;
-        ushort texNE = neData.TextureId;
-        ushort texSW = swData.TextureId;
-        ushort texSE = seData.TextureId;
-        
-        // Count how many corners have each texture
-        var textureCounts = new Dictionary<ushort, int>();
-        foreach (var tex in new[] { texNW, texNE, texSW, texSE })
-        {
-            if (tex > 0)
-            {
-                textureCounts.TryGetValue(tex, out int count);
-                textureCounts[tex] = count + 1;
-            }
-        }
-        
-        // If any texture appears 3+ times, use it (majority wins)
-        foreach (var kvp in textureCounts)
-        {
-            if (kvp.Value >= 3)
-                return kvp.Key;
-        }
-        
-        // Otherwise, use the texture from the highest corner
-        // This creates smooth blending at terrain transitions
+        // Evaluate corners in NW → NE → SW → SE order to match ClassicUO tie-breaking
         var corners = new[]
         {
-            (texNW, quad.NW.Z, 0),  // priority 0 = NW (highest priority for ties)
-            (texNE, quad.NE.Z, 1),
-            (texSW, quad.SW.Z, 2),
-            (texSE, quad.SE.Z, 3)   // priority 3 = SE (lowest priority for ties)
+            (quad.NW, 0),
+            (quad.NE, 1),
+            (quad.SW, 2),
+            (quad.SE, 3)
         };
-        
+
         ushort bestTex = 0;
         sbyte bestZ = sbyte.MinValue;
         int bestPriority = int.MaxValue;
-        
-        foreach (var (tex, z, priority) in corners)
+
+        foreach (var (tile, priority) in corners)
         {
-            if (tex == 0) continue;
-            
-            // Higher Z wins, or lower priority (earlier in list) wins on tie
-            if (z > bestZ || (z == bestZ && priority < bestPriority))
+            var data = _uoAssets.TileData.GetLandTile(tile.TileId);
+
+            // ClassicUO selects the texture from the highest-Z corner that has a valid texmap
+            if (!data.HasTexmap)
+                continue;
+
+            if (tile.Z > bestZ || (tile.Z == bestZ && priority < bestPriority))
             {
-                bestZ = z;
-                bestTex = tex;
+                bestZ = tile.Z;
+                bestTex = data.TextureId;
                 bestPriority = priority;
             }
         }
-        
+
         return bestTex;
     }
     
