@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RealmOfReality.Client.Assets;
@@ -159,9 +160,10 @@ public sealed class WorldRenderer : IDisposable
     
     /// <summary>Count art fallbacks used this frame</summary>
     public int ArtFallbackCount { get; private set; }
-    
-    // Debug
-    private bool _debugLogged;
+
+    // Debug: track logged failures so we report each missing asset once
+    private readonly HashSet<ushort> _loggedTexmapFailures = new();
+    private readonly HashSet<ushort> _loggedArtFailures = new();
     
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
@@ -477,7 +479,7 @@ public sealed class WorldRenderer : IDisposable
                 return texmap;
             }
             // Debug: texmap lookup failed for valid TextureId (only log once)
-            if (!_debugLogged)
+            if (ShouldLogTexmapFailure(textureChoice.TextureId))
             {
                 Console.WriteLine($"[WorldRenderer] Texmap lookup failed for TextureId={textureChoice.TextureId}");
             }
@@ -499,7 +501,7 @@ public sealed class WorldRenderer : IDisposable
                     return art.Texture;
                 }
                 // Debug: art lookup failed (only log once)
-                if (!_debugLogged)
+                if (ShouldLogArtFailure(artId))
                 {
                     Console.WriteLine($"[WorldRenderer] Art lookup failed for TileId={artId}");
                     _debugLogged = true;
@@ -606,7 +608,23 @@ public sealed class WorldRenderer : IDisposable
             ArtTileId = artTileId;
         }
     }
-    
+
+    private bool ShouldLogTexmapFailure(ushort textureId)
+    {
+        if (textureId == 0)
+            return false;
+
+        return _loggedTexmapFailures.Add(textureId);
+    }
+
+    private bool ShouldLogArtFailure(ushort artTileId)
+    {
+        if (artTileId == 0)
+            return false;
+
+        return _loggedArtFailures.Add(artTileId);
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // STATIC RENDERING
     // ═══════════════════════════════════════════════════════════════════
