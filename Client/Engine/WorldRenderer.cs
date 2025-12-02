@@ -538,8 +538,9 @@ public sealed class WorldRenderer : IDisposable
         ushort bestTex = 0;
         sbyte bestTexZ = sbyte.MinValue;
         int bestTexPriority = int.MaxValue;
+        LandTile bestTexTile = default;
 
-        ushort bestArt = 0;
+        LandTile bestArtTile = default;
         sbyte bestArtZ = sbyte.MinValue;
         int bestArtPriority = int.MaxValue;
 
@@ -547,7 +548,7 @@ public sealed class WorldRenderer : IDisposable
         {
             if (corner.Tile.TileId != 0 && (corner.Tile.Z > bestArtZ || (corner.Tile.Z == bestArtZ && corner.Priority < bestArtPriority)))
             {
-                bestArt = corner.Tile.TileId;
+                bestArtTile = corner.Tile;
                 bestArtZ = corner.Tile.Z;
                 bestArtPriority = corner.Priority;
             }
@@ -560,10 +561,23 @@ public sealed class WorldRenderer : IDisposable
                 bestTex = corner.Data.TextureId;
                 bestTexZ = corner.Tile.Z;
                 bestTexPriority = corner.Priority;
+                bestTexTile = corner.Tile;
             }
         }
 
-        return new TerrainTextureChoice(bestTex, bestArt);
+        ushort artTileId = 0;
+
+        // If we selected a texmap corner, use that same corner's art for fallback
+        if (bestTex > 0 && bestTexTile.TileId != 0)
+        {
+            artTileId = bestTexTile.TileId;
+        }
+        else if (bestArtTile.TileId != 0)
+        {
+            artTileId = bestArtTile.TileId;
+        }
+
+        return new TerrainTextureChoice(bestTex, artTileId);
     }
 
     private readonly struct CornerCandidate
