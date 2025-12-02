@@ -157,7 +157,7 @@ public sealed class WorldRenderer : IDisposable
     
     /// <summary>Count texmap textures used this frame</summary>
     public int TexmapHitCount { get; private set; }
-    
+
     /// <summary>Count art fallbacks used this frame</summary>
     public int ArtFallbackCount { get; private set; }
 
