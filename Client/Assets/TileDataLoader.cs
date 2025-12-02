@@ -323,6 +323,13 @@ public struct LandTileData
     
     /// <summary>Tile name (e.g., "grass", "water", "dirt")</summary>
     public string Name;
+
+    /// <summary>
+    /// Whether this land tile references a stretched terrain texture.
+    /// Matches ClassicUO behavior: valid texmap indices are greater than 0
+    /// and below the maximum texmap count.
+    /// </summary>
+    public readonly bool HasTexmap => TextureId > 0 && TextureId < Client.Rendering.UOConstants.MAX_TEXMAP_INDEX;
     
     // ─────────────────────────────────────────────────────────────────────
     // Flag Properties
