@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using RealmOfReality.Client.Assets;
@@ -156,12 +157,16 @@ public sealed class WorldRenderer : IDisposable
     
     /// <summary>Count texmap textures used this frame</summary>
     public int TexmapHitCount { get; private set; }
-    
+
     /// <summary>Count art fallbacks used this frame</summary>
     public int ArtFallbackCount { get; private set; }
-    
-    // Debug
+
+    /// <summary>Ensure certain debug messages emit only once per session</summary>
     private bool _debugLogged;
+
+    // Debug: track logged failures so we report each missing asset once
+    private readonly HashSet<ushort> _loggedTexmapFailures = new();
+    private readonly HashSet<ushort> _loggedArtFailures = new();
     
     // ═══════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
@@ -464,22 +469,22 @@ public sealed class WorldRenderer : IDisposable
     private Texture2D GetQuadTexture(TerrainQuad quad)
     {
         // Strategy: Pick the texture from the best corner based on ClassicUO algorithm
-        ushort textureId = PickTextureId(quad);
+        var textureChoice = ChooseTerrainTextures(quad);
         
         // 1. Try texmap if we have a valid TextureId
         // CRITICAL: textureId comes from TileData, NOT TileId!
-        if (textureId > 0 && _uoAssets?.Texmaps?.IsLoaded == true)
+        if (textureChoice.TextureId > 0 && _uoAssets?.Texmaps?.IsLoaded == true)
         {
-            var texmap = _uoAssets.Texmaps.GetTexmap(textureId);
+            var texmap = _uoAssets.Texmaps.GetTexmap(textureChoice.TextureId);
             if (texmap != null)
             {
                 TexmapHitCount++;
                 return texmap;
             }
             // Debug: texmap lookup failed for valid TextureId (only log once)
-            if (!_debugLogged)
+            if (ShouldLogTexmapFailure(textureChoice.TextureId))
             {
-                Console.WriteLine($"[WorldRenderer] Texmap lookup failed for TextureId={textureId}");
+                Console.WriteLine($"[WorldRenderer] Texmap lookup failed for TextureId={textureChoice.TextureId}");
             }
         }
         
@@ -487,7 +492,7 @@ public sealed class WorldRenderer : IDisposable
         if (_uoAssets?.Art != null)
         {
             // Use same priority algorithm for TileId selection
-            ushort artId = PickTileIdForArt(quad);
+            ushort artId = textureChoice.ArtTileId;
             
             if (artId > 0)
             {
@@ -499,7 +504,7 @@ public sealed class WorldRenderer : IDisposable
                     return art.Texture;
                 }
                 // Debug: art lookup failed (only log once)
-                if (!_debugLogged)
+                if (ShouldLogArtFailure(artId))
                 {
                     Console.WriteLine($"[WorldRenderer] Art lookup failed for TileId={artId}");
                 }
@@ -517,111 +522,111 @@ public sealed class WorldRenderer : IDisposable
     }
     
     /// <summary>
-    /// Pick the best TextureId from a quad's 4 corners.
-    /// ClassicUO algorithm: Uses priority based on texture presence and Z-height.
-    /// 
-    /// Priority order when corners have different textures:
-    /// 1. If 3+ corners have same texture, use that
-    /// 2. Otherwise, use texture from corner with highest Z
-    /// 3. If all have same Z, prefer NW corner
+    /// Choose both the texmap TextureId and the art TileId in one pass so
+    /// fallback visuals stay aligned with ClassicUO's highest-corner rule.
     /// </summary>
-    private ushort PickTextureId(TerrainQuad quad)
+    private TerrainTextureChoice ChooseTerrainTextures(TerrainQuad quad)
     {
-        if (_uoAssets?.TileData?.IsLoaded != true)
-            return 0;
-        
-        // Get TextureId for each corner
-        var nwData = _uoAssets.TileData.GetLandTile(quad.NW.TileId);
-        var neData = _uoAssets.TileData.GetLandTile(quad.NE.TileId);
-        var swData = _uoAssets.TileData.GetLandTile(quad.SW.TileId);
-        var seData = _uoAssets.TileData.GetLandTile(quad.SE.TileId);
-        
-        ushort texNW = nwData.TextureId;
-        ushort texNE = neData.TextureId;
-        ushort texSW = swData.TextureId;
-        ushort texSE = seData.TextureId;
-        
-        // Count how many corners have each texture
-        var textureCounts = new Dictionary<ushort, int>();
-        foreach (var tex in new[] { texNW, texNE, texSW, texSE })
-        {
-            if (tex > 0)
-            {
-                textureCounts.TryGetValue(tex, out int count);
-                textureCounts[tex] = count + 1;
-            }
-        }
-        
-        // If any texture appears 3+ times, use it (majority wins)
-        foreach (var kvp in textureCounts)
-        {
-            if (kvp.Value >= 3)
-                return kvp.Key;
-        }
-        
-        // Otherwise, use the texture from the highest corner
-        // This creates smooth blending at terrain transitions
+        var tileData = _uoAssets?.TileData;
+        bool tileDataReady = tileData?.IsLoaded == true;
+
+        // Evaluate corners in deterministic NW → NE → SW → SE order to match
+        // ClassicUO tie-breaking and avoid shimmering across adjacent quads.
         var corners = new[]
         {
-            (texNW, quad.NW.Z, 0),  // priority 0 = NW (highest priority for ties)
-            (texNE, quad.NE.Z, 1),
-            (texSW, quad.SW.Z, 2),
-            (texSE, quad.SE.Z, 3)   // priority 3 = SE (lowest priority for ties)
+            new CornerCandidate(quad.NW, tileDataReady ? tileData!.GetLandTile(quad.NW.TileId) : default, 0),
+            new CornerCandidate(quad.NE, tileDataReady ? tileData!.GetLandTile(quad.NE.TileId) : default, 1),
+            new CornerCandidate(quad.SW, tileDataReady ? tileData!.GetLandTile(quad.SW.TileId) : default, 2),
+            new CornerCandidate(quad.SE, tileDataReady ? tileData!.GetLandTile(quad.SE.TileId) : default, 3)
         };
-        
+
         ushort bestTex = 0;
-        sbyte bestZ = sbyte.MinValue;
-        int bestPriority = int.MaxValue;
-        
-        foreach (var (tex, z, priority) in corners)
+        sbyte bestTexZ = sbyte.MinValue;
+        int bestTexPriority = int.MaxValue;
+        LandTile bestTexTile = default;
+
+        LandTile bestArtTile = default;
+        sbyte bestArtZ = sbyte.MinValue;
+        int bestArtPriority = int.MaxValue;
+
+        foreach (var corner in corners)
         {
-            if (tex == 0) continue;
-            
-            // Higher Z wins, or lower priority (earlier in list) wins on tie
-            if (z > bestZ || (z == bestZ && priority < bestPriority))
+            if (corner.Tile.TileId != 0 && (corner.Tile.Z > bestArtZ || (corner.Tile.Z == bestArtZ && corner.Priority < bestArtPriority)))
             {
-                bestZ = z;
-                bestTex = tex;
-                bestPriority = priority;
+                bestArtTile = corner.Tile;
+                bestArtZ = corner.Tile.Z;
+                bestArtPriority = corner.Priority;
+            }
+
+            if (!corner.Data.HasTexmap)
+                continue;
+
+            if (corner.Tile.Z > bestTexZ || (corner.Tile.Z == bestTexZ && corner.Priority < bestTexPriority))
+            {
+                bestTex = corner.Data.TextureId;
+                bestTexZ = corner.Tile.Z;
+                bestTexPriority = corner.Priority;
+                bestTexTile = corner.Tile;
             }
         }
-        
-        return bestTex;
+
+        ushort artTileId = 0;
+
+        // If we selected a texmap corner, use that same corner's art for fallback
+        if (bestTex > 0 && bestTexTile.TileId != 0)
+        {
+            artTileId = bestTexTile.TileId;
+        }
+        else if (bestArtTile.TileId != 0)
+        {
+            artTileId = bestArtTile.TileId;
+        }
+
+        return new TerrainTextureChoice(bestTex, artTileId);
     }
-    
-    /// <summary>
-    /// Get the TileId to use for art fallback (when texmap fails).
-    /// Uses same priority logic as PickTextureId.
-    /// </summary>
-    private ushort PickTileIdForArt(TerrainQuad quad)
+
+    private readonly struct CornerCandidate
     {
-        var corners = new[]
+        public readonly LandTile Tile;
+        public readonly LandTileData Data;
+        public readonly int Priority;
+
+        public CornerCandidate(LandTile tile, LandTileData data, int priority)
         {
-            (quad.NW.TileId, quad.NW.Z, 0),
-            (quad.NE.TileId, quad.NE.Z, 1),
-            (quad.SW.TileId, quad.SW.Z, 2),
-            (quad.SE.TileId, quad.SE.Z, 3)
-        };
-        
-        ushort bestId = 0;
-        sbyte bestZ = sbyte.MinValue;
-        int bestPriority = int.MaxValue;
-        
-        foreach (var (id, z, priority) in corners)
-        {
-            if (id == 0) continue;
-            
-            if (z > bestZ || (z == bestZ && priority < bestPriority))
-            {
-                bestZ = z;
-                bestId = id;
-                bestPriority = priority;
-            }
+            Tile = tile;
+            Data = data;
+            Priority = priority;
         }
-        
-        return bestId;
     }
-    
+
+    private readonly struct TerrainTextureChoice
+    {
+        public readonly ushort TextureId;
+        public readonly ushort ArtTileId;
+
+        public TerrainTextureChoice(ushort textureId, ushort artTileId)
+        {
+            TextureId = textureId;
+            ArtTileId = artTileId;
+        }
+    }
+
+    private bool ShouldLogTexmapFailure(ushort textureId)
+    {
+        if (textureId == 0)
+            return false;
+
+        return _loggedTexmapFailures.Add(textureId);
+    }
+
+    private bool ShouldLogArtFailure(ushort artTileId)
+    {
+        if (artTileId == 0)
+            return false;
+
+        return _loggedArtFailures.Add(artTileId);
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // STATIC RENDERING
     // ═══════════════════════════════════════════════════════════════════
