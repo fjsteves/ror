@@ -161,9 +161,6 @@ public sealed class WorldRenderer : IDisposable
     /// <summary>Count art fallbacks used this frame</summary>
     public int ArtFallbackCount { get; private set; }
 
-    /// <summary>Ensure certain debug messages emit only once per session</summary>
-    private bool _debugLogged;
-
     // Debug: track logged failures so we report each missing asset once
     private readonly HashSet<ushort> _loggedTexmapFailures = new();
     private readonly HashSet<ushort> _loggedArtFailures = new();
@@ -507,6 +504,7 @@ public sealed class WorldRenderer : IDisposable
                 if (ShouldLogArtFailure(artId))
                 {
                     Console.WriteLine($"[WorldRenderer] Art lookup failed for TileId={artId}");
+                    _debugLogged = true;
                 }
             }
         }
