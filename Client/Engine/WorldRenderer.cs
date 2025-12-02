@@ -502,6 +502,7 @@ public sealed class WorldRenderer : IDisposable
                 if (!_debugLogged)
                 {
                     Console.WriteLine($"[WorldRenderer] Art lookup failed for TileId={artId}");
+                    _debugLogged = true;
                 }
             }
         }
