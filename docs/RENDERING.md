@@ -496,6 +496,11 @@ Northwest → Northwest, None
 
 ### Enable Debug Logging
 
+Call `WorldRenderer.ResetDebugLogging()` to rerun the one-time diagnostics
+after loading or reloading maps. The world renderer now clears its missing
+asset caches and debug guard when a map loads so you see fresh warnings on
+new data.
+
 ```csharp
 // Add to WorldRenderer.Render():
 if (!_debugLogged)

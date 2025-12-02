@@ -230,10 +230,11 @@ public sealed class WorldRenderer : IDisposable
     public bool LoadMap(GraphicsDevice graphicsDevice, string uoDataPath, int facet = 0)
     {
         _map = new MapLoader(_graphics, uoDataPath);
-        
+
         if (_map.Load(facet))
         {
             Console.WriteLine($"[WorldRenderer] Map loaded: {_map.Width}×{_map.Height} tiles");
+            ResetDebugLogging();
             return true;
         }
         
@@ -884,6 +885,18 @@ public sealed class WorldRenderer : IDisposable
                $"Tex: {TexmapHitCount}/{ArtFallbackCount} | " +
                $"Statics: {RenderedStaticCount} | " +
                $"Entities: {RenderedEntityCount}";
+    }
+
+    /// <summary>
+    /// Reset one-time debug guards so diagnostics rerun after loading or
+    /// reloading content. Also clears missing-asset tracking so new assets
+    /// can surface warnings if they still fail to load.
+    /// </summary>
+    public void ResetDebugLogging()
+    {
+        _debugLogged = false;
+        _loggedTexmapFailures.Clear();
+        _loggedArtFailures.Clear();
     }
     
     private void LogDebugInfo(int centerX, int centerY)
