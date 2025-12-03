@@ -6,6 +6,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RollForward>Major</RollForward>
     <PublishReadyToRun>false</PublishReadyToRun>
     <TieredCompilation>false</TieredCompilation>
@@ -13,6 +14,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\RealmOfReality.Shared.csproj" />
+    <ProjectReference Include="ClassicUO.IO\ClassicUO.IO.csproj" />
+    <ProjectReference Include="ClassicUO.Utility\ClassicUO.Utility.csproj" />
+    <ProjectReference Include="ClassicUO.Assets\ClassicUO.Assets.csproj" />
   </ItemGroup>
 
   <ItemGroup>
